@@ -1,103 +1,59 @@
+local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local CoreGui = game:GetService("CoreGui")
+local webhookUrl = 'https://discord.com/api/webhooks/1424874312531316736/HIJuglwwcK-nQNIVQyfWeRcw2XMzBXwufEDneZKU6_UB4QghjnVajH64p068YlTP4uud' -- Replace with your actual webhook URL
 
-local ESPEnabled = true
-local ESPVisible = true
-
-local function createESP(player)
-    local box = Drawing.new("Square")
-    box.Thickness = 2
-    box.Color = Color3.fromRGB(173, 127, 168) -- Light purple
-    box.Visible = ESPVisible
-
-    local function updateESP()
-        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            local rootPart = player.Character.HumanoidRootPart
-            local vector, onScreen = workspace.CurrentCamera:WorldToViewportPoint(rootPart.Position)
-            if onScreen then
-                box.Size = Vector2.new(2000 / vector.Z, 2000 / vector.Z)
-                box.Position = Vector2.new(vector.X - box.Size.X / 2, vector.Y - box.Size.Y / 2)
-                box.Visible = ESPVisible
-            else
-                box.Visible = false
-            end
-        else
-            box.Visible = false
-        end
-    end
-
-    RunService.RenderStepped:Connect(function()
-        if ESPEnabled then
-            updateESP()
-        end
-    end)
-
-    player.CharacterAdded:Connect(function()
-        updateESP()
-    end)
-
-    return box
+local function sendWebhookMessage(errorMessage)
+	local data = {
+		["content"] = "Script Error: " .. errorMessage
+	}
+	local jsonData = HttpService:JSONEncode(data)
+	
+	local success, postError = pcall(function()
+		HttpService:PostAsync(webhookUrl, jsonData, Enum.HttpContentType.ApplicationJson)
+	end)
+	
+	if not success then
+		warn("Failed to send webhook: " .. tostring(postError))
+	end
 end
 
-local function createButtonGui()
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Parent = CoreGui
-
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 200, 0, 50)
-    frame.Position = UDim2.new(0.5, -100, 0, 50)
-    frame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    frame.Parent = screenGui
-
-    local buttons = {
-        "Aimbot",
-        "ESP",
-        "Client Btools",
-        "Spam",
-        "Flight",
-        "Give All Tools",
-        "Explorer",
-        "Download",
-        "Fling",
-        "Spin"
-    }
-
-    for i, buttonName in ipairs(buttons) do
-        local button = Instance.new("TextButton")
-        button.Size = UDim2.new(1, -10, 0, 30)
-        button.Position = UDim2.new(0, 0, 0, (i-1) * 30)
-        button.Text = buttonName
-        button.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
-        button.Parent = frame
-    end
-
-    UserInputService.InputBegan:Connect(function(input, gameProcessed)
-        if not gameProcessed and input.KeyCode == Enum.KeyCode.RightShift then
-            screenGui.Enabled = not screenGui.Enabled
-        end
-    end)
-
-    return screenGui
+local function addHighlightToCharacter(character)
+	if character:FindFirstChild("PlayerESPHighlight") then
+		return
+	end
+	local ESP = Instance.new("Highlight")
+	ESP.Name = "PlayerESPHighlight"
+	ESP.FillColor = Color3.new(0.843137, 0.627451, 1)
+	ESP.OutlineColor = Color3.new(0, 0, 0)
+	ESP.Parent = character
 end
 
-local function initializeESP()
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= Players.LocalPlayer then
-            local box = createESP(player)
-            table.insert(espBoxes, box)
-        end
-    end
-
-    Players.PlayerAdded:Connect(function(player)
-        if player ~= Players.LocalPlayer then
-            local box = createESP(player)
-            table.insert(espBoxes, box)
-        end
-    end)
+local function onCharacterAdded(character)
+	local success, err = pcall(function()
+		addHighlightToCharacter(character)
+	end)
+	if not success then
+		sendWebhookMessage(tostring(err))
+	end
 end
 
-local espBoxes = {}
-initializeESP()
-createButtonGui()
+local function setupPlayer(player)
+	if player.Character then
+		onCharacterAdded(player.Character)
+	end
+	player.CharacterAdded:Connect(onCharacterAdded)
+end
+
+local function main()
+	for k, player in Players:GetPlayers() do
+		setupPlayer(player)
+	end
+	Players.PlayerAdded:Connect(setupPlayer)
+end
+
+local success, err = pcall(main)
+if not success then
+	print("Error: " .. tostring(err))
+	sendWebhookMessage(tostring(err))
+end
+
