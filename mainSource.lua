@@ -1,7 +1,6 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CoreGui = game:GetService("CoreGui")
 
 local ESPEnabled = true
@@ -102,5 +101,3 @@ end
 local espBoxes = {}
 initializeESP()
 createButtonGui()
-
--- Additional features can be implemented similarly by creating functions and connecting them to the buttons
